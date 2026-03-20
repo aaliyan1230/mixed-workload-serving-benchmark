@@ -42,6 +42,13 @@ uv lock
 uv sync
 ```
 
+## Contributing
+
+```bash
+# Standard setup
+uv sync
+```
+
 ## Project Layout
 
 - `src/mws_bench/config.py`: typed experiment config and JSON loader
