@@ -32,6 +32,16 @@ uv run mws-bench run --config configs/default.json --output results/default_run.
 uv run mws-bench sweep --output results/sweep.csv
 ```
 
+## Lockfile
+
+```bash
+# Generate or update uv.lock
+uv lock
+
+# Sync the environment to the lockfile
+uv sync
+```
+
 ## Project Layout
 
 - `src/mws_bench/config.py`: typed experiment config and JSON loader
