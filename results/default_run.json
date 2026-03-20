@@ -1,0 +1,105 @@
+{
+  "config": {
+    "seed": 7,
+    "duration_s": 120.0,
+    "arrival_rate_rps": 8.0,
+    "mix": {
+      "streaming_ratio": 0.5,
+      "agentic_ratio": 0.5
+    },
+    "policy": {
+      "name": "fifo"
+    },
+    "workers": {
+      "streaming": 4,
+      "agentic": 4,
+      "shared": 0
+    },
+    "sla": {
+      "streaming_ms": 1200,
+      "agentic_ms": 6000
+    },
+    "cost": {
+      "streaming_unit": 0.001,
+      "agentic_unit": 0.006,
+      "timeout_penalty": 0.0005
+    },
+    "streaming_profile": {
+      "service_ms_mean": 350,
+      "service_ms_std": 80,
+      "timeout_ms": 3000
+    },
+    "agentic_profile": {
+      "steps_mean": 5,
+      "steps_std": 2,
+      "step_ms_mean": 650,
+      "step_ms_std": 220,
+      "stall_probability": 0.08,
+      "stall_ms": 2000,
+      "timeout_ms": 12000
+    },
+    "replicates": 5
+  },
+  "replicates": [
+    {
+      "total_jobs": 930,
+      "success_jobs": 484,
+      "timeout_jobs": 446,
+      "throughput_rps": 1.036831506105403,
+      "p95_latency_ms": 318350.6416054234,
+      "p99_latency_ms": 338766.0873748078,
+      "sla_violation_rate": 0.4881720430107527,
+      "cost_per_success": 0.007113636363636247
+    },
+    {
+      "total_jobs": 977,
+      "success_jobs": 508,
+      "timeout_jobs": 469,
+      "throughput_rps": 1.0317251081472882,
+      "p95_latency_ms": 334450.54004985903,
+      "p99_latency_ms": 367042.84425223316,
+      "sla_violation_rate": 0.48925281473899696,
+      "cost_per_success": 0.007099409448818782
+    },
+    {
+      "total_jobs": 1015,
+      "success_jobs": 534,
+      "timeout_jobs": 481,
+      "throughput_rps": 1.037318058391395,
+      "p95_latency_ms": 358944.3167087897,
+      "p99_latency_ms": 387318.97099127114,
+      "sla_violation_rate": 0.4798029556650246,
+      "cost_per_success": 0.0069578651685392075
+    },
+    {
+      "total_jobs": 992,
+      "success_jobs": 519,
+      "timeout_jobs": 473,
+      "throughput_rps": 1.0544607714331302,
+      "p95_latency_ms": 333961.17268502765,
+      "p99_latency_ms": 365669.52006783534,
+      "sla_violation_rate": 0.48588709677419356,
+      "cost_per_success": 0.007078034682080807
+    },
+    {
+      "total_jobs": 1001,
+      "success_jobs": 497,
+      "timeout_jobs": 504,
+      "throughput_rps": 0.9074918439572907,
+      "p95_latency_ms": 386717.6307087228,
+      "p99_latency_ms": 415242.53155056137,
+      "sla_violation_rate": 0.5124875124875125,
+      "cost_per_success": 0.007732394366197055
+    }
+  ],
+  "summary": {
+    "throughput_rps": 1.0135654576069015,
+    "p95_latency_ms": 346484.8603515645,
+    "p99_latency_ms": 374807.9908473418,
+    "sla_violation_rate": 0.49112048453529605,
+    "cost_per_success": 0.00719626800585442,
+    "total_jobs": 983.0,
+    "success_jobs": 508.4,
+    "timeout_jobs": 474.6
+  }
+}
