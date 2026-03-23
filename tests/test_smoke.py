@@ -97,6 +97,13 @@ def test_live_sglang_config_loads() -> None:
     assert cfg.sglang.base_url.startswith("http")
 
 
+def test_live_ray_serve_config_loads() -> None:
+    cfg_path = Path(__file__).resolve().parents[1] / "configs" / "live_ray_serve.json"
+    cfg = load_config(cfg_path)
+    assert cfg.execution.mode == "live-ray-serve"
+    assert cfg.ray_serve.base_url.startswith("http")
+
+
 def test_invalid_execution_mode_raises(tmp_path: Path) -> None:
     config_path = tmp_path / "bad_mode.json"
     config_path.write_text(

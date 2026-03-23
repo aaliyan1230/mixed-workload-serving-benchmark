@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Literal
 from urllib import error, request
 
-from .config import ExperimentConfig, SglangConfig, VllmConfig
+from .config import ExperimentConfig, RayServeConfig, SglangConfig, VllmConfig
 from .simulator import JobResult
 from .workload import Job
 
@@ -22,7 +22,7 @@ class _Outcome:
     backend_model: str
 
 
-OpenAICompatibleConfig = VllmConfig | SglangConfig
+OpenAICompatibleConfig = VllmConfig | SglangConfig | RayServeConfig
 
 
 def _pick_job(policy_name: str, pending: list[Job]) -> Job:
@@ -124,10 +124,14 @@ def run_live_sglang(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
     return _run_live_openai_compatible(cfg, jobs, backend="sglang")
 
 
+def run_live_ray_serve(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
+    return _run_live_openai_compatible(cfg, jobs, backend="ray-serve")
+
+
 def _run_live_openai_compatible(
     cfg: ExperimentConfig,
     jobs: list[Job],
-    backend: Literal["vllm", "sglang"],
+    backend: Literal["vllm", "sglang", "ray-serve"],
 ) -> list[JobResult]:
     arrivals = sorted(jobs, key=lambda j: j.arrival_s)
     total_jobs = len(arrivals)
@@ -152,7 +156,12 @@ def _run_live_openai_compatible(
             while pending and len(active) < max_workers:
                 job = _pick_job(cfg.policy.name, pending)
                 start_s = time.monotonic() - start_clock
-                run_cfg = cfg.vllm if backend == "vllm" else cfg.sglang
+                if backend == "vllm":
+                    run_cfg = cfg.vllm
+                elif backend == "sglang":
+                    run_cfg = cfg.sglang
+                else:
+                    run_cfg = cfg.ray_serve
                 fut = pool.submit(_run_one, run_cfg, job, start_clock)
                 active[fut] = (job, start_s)
 

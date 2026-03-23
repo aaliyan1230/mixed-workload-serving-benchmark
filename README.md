@@ -61,6 +61,9 @@ uv run mws-bench run --config configs/live_vllm.json --output results/live_vllm_
 # Run against SGLang OpenAI-compatible endpoint
 uv run mws-bench run --config configs/live_sglang.json --output results/live_sglang_run.json --trace-output results/live_sglang_trace.jsonl
 
+# Run against Ray Serve OpenAI-compatible endpoint
+uv run mws-bench run --config configs/live_ray_serve.json --output results/live_ray_serve_run.json --trace-output results/live_ray_serve_trace.jsonl
+
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
 
@@ -189,6 +192,27 @@ Config fields:
 - `sglang.streaming_model` / `sglang.agentic_model`: model ids
 - `sglang.request_timeout_s`: per-request timeout ceiling
 - `sglang.*_prompt`, `sglang.*_max_tokens`: load-shape controls for each class
+
+### Ray Serve Mode (OpenAI-Compatible)
+
+- Start a Ray Serve endpoint exposing an OpenAI-compatible chat-completions API.
+- Use `configs/live_ray_serve.json` and set model names that your deployment exposes.
+- Optional auth: set `RAY_SERVE_API_KEY` (or your configured env var in `ray_serve.api_key_env`).
+
+Example:
+
+```bash
+uv run mws-bench run --config configs/live_ray_serve.json --output results/live_ray_serve_run.json --trace-output results/live_ray_serve_trace.jsonl
+```
+
+Config fields:
+
+- `execution.mode`: `live-ray-serve`
+- `ray_serve.base_url`: OpenAI-compatible base URL
+- `ray_serve.api_key_env`: env var name used for bearer token
+- `ray_serve.streaming_model` / `ray_serve.agentic_model`: model ids
+- `ray_serve.request_timeout_s`: per-request timeout ceiling
+- `ray_serve.*_prompt`, `ray_serve.*_max_tokens`: load-shape controls for each class
 
 Trace fields include per-request latency and backend metadata:
 

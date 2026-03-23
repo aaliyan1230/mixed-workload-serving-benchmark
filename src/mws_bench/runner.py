@@ -8,7 +8,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 
 from .config import ExperimentConfig, MixConfig, PolicyConfig
-from .live_openai_compatible import run_live_sglang, run_live_vllm
+from .live_openai_compatible import run_live_ray_serve, run_live_sglang, run_live_vllm
 from .live_ollama import run_live_ollama
 from .metrics import AggregateMetrics, compute_metrics
 from .simulator import JobResult, simulate
@@ -65,6 +65,8 @@ def _execute_once(cfg: ExperimentConfig, rep: int) -> tuple[AggregateMetrics, li
         result = run_live_vllm(cfg, jobs)
     elif cfg.execution.mode == "live-sglang":
         result = run_live_sglang(cfg, jobs)
+    elif cfg.execution.mode == "live-ray-serve":
+        result = run_live_ray_serve(cfg, jobs)
     else:
         raise ValueError(f"Unsupported execution mode: {cfg.execution.mode}")
     return compute_metrics(cfg, result), result
