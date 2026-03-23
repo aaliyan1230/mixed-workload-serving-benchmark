@@ -8,8 +8,9 @@ from dataclasses import asdict, replace
 from pathlib import Path
 
 from .config import ExperimentConfig, MixConfig, PolicyConfig
+from .live_ollama import run_live_ollama
 from .metrics import AggregateMetrics, compute_metrics
-from .simulator import simulate
+from .simulator import JobResult, simulate
 from .workload import generate_jobs
 
 
@@ -53,12 +54,61 @@ def _ci95(values: Iterable[float]) -> float:
     return 1.96 * _std(vals) / math.sqrt(len(vals))
 
 
+def _execute_once(cfg: ExperimentConfig, rep: int) -> tuple[AggregateMetrics, list[JobResult]]:
+    jobs = generate_jobs(cfg, seed_offset=rep)
+    if cfg.execution.mode == "simulate":
+        result = simulate(cfg, jobs)
+    elif cfg.execution.mode == "live-ollama":
+        result = run_live_ollama(cfg, jobs)
+    else:
+        raise ValueError(f"Unsupported execution mode: {cfg.execution.mode}")
+    return compute_metrics(cfg, result), result
+
+
+def _trace_record(
+    cfg: ExperimentConfig,
+    replicate: int,
+    job: JobResult,
+) -> dict[str, float | int | str | bool | None]:
+    return {
+        "replicate": replicate,
+        "execution_mode": cfg.execution.mode,
+        "policy": cfg.policy.name,
+        "streaming_ratio": cfg.mix.streaming_ratio,
+        "agentic_ratio": cfg.mix.agentic_ratio,
+        "job_id": job.id,
+        "job_type": job.job_type,
+        "arrival_s": job.arrival_s,
+        "start_s": job.start_s,
+        "end_s": job.end_s,
+        "queue_wait_ms": job.queue_wait_ms,
+        "service_ms": job.service_ms,
+        "latency_ms": (job.end_s - job.arrival_s) * 1000.0,
+        "timed_out": job.timed_out,
+        "backend_model": job.backend_model,
+        "backend_status": job.backend_status,
+        "backend_error": job.backend_error,
+    }
+
+
+def _write_trace_jsonl(
+    cfg: ExperimentConfig,
+    trace_output_path: str | Path,
+    replicate_rows: list[tuple[int, list[JobResult]]],
+) -> None:
+    path = Path(trace_output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as fp:
+        for rep, jobs in replicate_rows:
+            for job in jobs:
+                fp.write(json.dumps(_trace_record(cfg, rep, job)) + "\n")
+
+
 def run_replicates(cfg: ExperimentConfig) -> list[AggregateMetrics]:
     rows: list[AggregateMetrics] = []
     for rep in range(cfg.replicates):
-        jobs = generate_jobs(cfg, seed_offset=rep)
-        result = simulate(cfg, jobs)
-        rows.append(compute_metrics(cfg, result))
+        metric, _ = _execute_once(cfg, rep)
+        rows.append(metric)
     return rows
 
 
@@ -101,8 +151,18 @@ def summarize_structured(
     return out
 
 
-def run_single_to_json(cfg: ExperimentConfig, output_path: str | Path) -> None:
-    metrics = run_replicates(cfg)
+def run_single_to_json(
+    cfg: ExperimentConfig,
+    output_path: str | Path,
+    trace_output_path: str | Path | None = None,
+) -> None:
+    metrics: list[AggregateMetrics] = []
+    replicate_results: list[tuple[int, list[JobResult]]] = []
+    for rep in range(cfg.replicates):
+        metric, jobs = _execute_once(cfg, rep)
+        metrics.append(metric)
+        replicate_results.append((rep, jobs))
+
     summary = summarize(metrics)
     summary_stats = summarize_structured(metrics)
 
@@ -116,9 +176,17 @@ def run_single_to_json(cfg: ExperimentConfig, output_path: str | Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2))
 
+    if trace_output_path is not None:
+        _write_trace_jsonl(cfg, trace_output_path, replicate_results)
 
-def run_sweep_to_csv(cfg: ExperimentConfig, output_path: str | Path) -> None:
+
+def run_sweep_to_csv(
+    cfg: ExperimentConfig,
+    output_path: str | Path,
+    trace_output_dir: str | Path | None = None,
+) -> None:
     rows: list[dict[str, float | str]] = []
+    sweep_traces: list[tuple[Path, ExperimentConfig, list[tuple[int, list[JobResult]]]]] = []
     for policy in SWEEP_POLICIES:
         for stream_ratio, agent_ratio in SWEEP_MIXES:
             run_cfg = replace(
@@ -126,13 +194,29 @@ def run_sweep_to_csv(cfg: ExperimentConfig, output_path: str | Path) -> None:
                 policy=PolicyConfig(name=policy),
                 mix=MixConfig(streaming_ratio=stream_ratio, agentic_ratio=agent_ratio),
             )
-            metrics = run_replicates(run_cfg)
+            metrics: list[AggregateMetrics] = []
+            replicate_results: list[tuple[int, list[JobResult]]] = []
+            for rep in range(run_cfg.replicates):
+                metric, jobs = _execute_once(run_cfg, rep)
+                metrics.append(metric)
+                replicate_results.append((rep, jobs))
+
             summary = summarize_with_uncertainty(metrics)
             row: dict[str, float | str] = dict(summary)
             row["policy"] = policy
             row["streaming_ratio"] = stream_ratio
             row["agentic_ratio"] = agent_ratio
             rows.append(row)
+
+            if trace_output_dir is not None:
+                trace_name = f"trace_{policy}_s{stream_ratio:.1f}_a{agent_ratio:.1f}.jsonl"
+                sweep_traces.append(
+                    (
+                        Path(trace_output_dir) / trace_name,
+                        run_cfg,
+                        replicate_results,
+                    )
+                )
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -171,3 +255,7 @@ def run_sweep_to_csv(cfg: ExperimentConfig, output_path: str | Path) -> None:
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
+
+    if trace_output_dir is not None:
+        for trace_path, trace_cfg, replicate_rows in sweep_traces:
+            _write_trace_jsonl(trace_cfg, trace_path, replicate_rows)

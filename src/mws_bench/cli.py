@@ -20,12 +20,22 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd = sub.add_parser("run", help="Run replicates for one config")
     run_cmd.add_argument("--config", required=True, help="Path to config JSON")
     run_cmd.add_argument("--output", required=True, help="Path to output JSON")
+    run_cmd.add_argument(
+        "--trace-output",
+        default=None,
+        help="Optional path to request-level trace JSONL",
+    )
 
     sweep_cmd = sub.add_parser("sweep", help="Run policy x mix sweep")
     sweep_cmd.add_argument(
         "--config", default="configs/default.json", help="Path to base config JSON"
     )
     sweep_cmd.add_argument("--output", required=True, help="Path to output CSV")
+    sweep_cmd.add_argument(
+        "--trace-output-dir",
+        default=None,
+        help="Optional directory to write request-level trace JSONL files",
+    )
 
     return parser
 
@@ -44,13 +54,15 @@ def main() -> None:
     cfg = load_config(args.config)
 
     if args.command == "run":
-        run_single_to_json(cfg, args.output)
+        run_single_to_json(cfg, args.output, trace_output_path=args.trace_output)
         return
 
     if args.command == "sweep":
         _print_sweep_plan()
-        run_sweep_to_csv(cfg, args.output)
+        run_sweep_to_csv(cfg, args.output, trace_output_dir=args.trace_output_dir)
         print(f"Wrote sweep CSV to {args.output}")
+        if args.trace_output_dir is not None:
+            print(f"Wrote sweep trace JSONL files to {args.trace_output_dir}")
         return
 
     raise ValueError(f"Unknown command: {args.command}")

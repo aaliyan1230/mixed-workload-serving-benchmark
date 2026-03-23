@@ -55,6 +55,23 @@ class AgenticProfile:
 
 
 @dataclass(frozen=True)
+class ExecutionConfig:
+    mode: str
+
+
+@dataclass(frozen=True)
+class OllamaConfig:
+    base_url: str
+    streaming_model: str
+    agentic_model: str
+    request_timeout_s: float
+    streaming_prompt: str
+    agentic_prompt: str
+    streaming_num_predict: int
+    agentic_num_predict: int
+
+
+@dataclass(frozen=True)
 class ExperimentConfig:
     seed: int
     duration_s: float
@@ -66,6 +83,8 @@ class ExperimentConfig:
     cost: CostConfig
     streaming_profile: StreamingProfile
     agentic_profile: AgenticProfile
+    execution: ExecutionConfig
+    ollama: OllamaConfig
     replicates: int
 
 
@@ -91,8 +110,27 @@ def _validate_capacity(cfg: ExperimentConfig) -> None:
         raise ValueError("replicates must be positive")
 
 
+def _validate_execution(cfg: ExperimentConfig) -> None:
+    supported_modes = {"simulate", "live-ollama"}
+    if cfg.execution.mode not in supported_modes:
+        raise ValueError(
+            f"execution mode must be one of {sorted(supported_modes)}, got {cfg.execution.mode}"
+        )
+
+    if cfg.execution.mode == "live-ollama":
+        if cfg.ollama.request_timeout_s <= 0:
+            raise ValueError("ollama request_timeout_s must be positive")
+        if not cfg.ollama.base_url:
+            raise ValueError("ollama base_url is required for live-ollama mode")
+        if not cfg.ollama.streaming_model or not cfg.ollama.agentic_model:
+            raise ValueError("ollama models are required for live-ollama mode")
+
+
 def load_config(path: str | Path) -> ExperimentConfig:
     data = json.loads(Path(path).read_text())
+
+    execution_data = data.get("execution", {"mode": "simulate"})
+    ollama_data = data.get("ollama", {})
 
     cfg = ExperimentConfig(
         seed=int(data["seed"]),
@@ -105,10 +143,32 @@ def load_config(path: str | Path) -> ExperimentConfig:
         cost=CostConfig(**data["cost"]),
         streaming_profile=StreamingProfile(**data["streaming_profile"]),
         agentic_profile=AgenticProfile(**data["agentic_profile"]),
+        execution=ExecutionConfig(mode=str(execution_data.get("mode", "simulate"))),
+        ollama=OllamaConfig(
+            base_url=str(ollama_data.get("base_url", "http://127.0.0.1:11434")),
+            streaming_model=str(ollama_data.get("streaming_model", "llama3.2:3b")),
+            agentic_model=str(ollama_data.get("agentic_model", "llama3.2:3b")),
+            request_timeout_s=float(ollama_data.get("request_timeout_s", 30.0)),
+            streaming_prompt=str(
+                ollama_data.get(
+                    "streaming_prompt",
+                    "Answer in one short sentence: what is 2+2?",
+                )
+            ),
+            agentic_prompt=str(
+                ollama_data.get(
+                    "agentic_prompt",
+                    "Summarize this in three bullet points: local benchmark smoke run.",
+                )
+            ),
+            streaming_num_predict=int(ollama_data.get("streaming_num_predict", 64)),
+            agentic_num_predict=int(ollama_data.get("agentic_num_predict", 192)),
+        ),
         replicates=int(data["replicates"]),
     )
 
     _validate_mix(cfg.mix)
     _validate_workers(cfg.workers)
     _validate_capacity(cfg)
+    _validate_execution(cfg)
     return cfg

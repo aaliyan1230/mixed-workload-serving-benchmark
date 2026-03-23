@@ -1,10 +1,11 @@
-.PHONY: help setup kernel run sweep sweep-contention plots report test notebook all
+.PHONY: help setup kernel run run-ollama sweep sweep-contention plots report test notebook all
 
 help:
 	@printf "Available targets:\n"
 	@printf "  make setup            # create/update uv env with dev deps\n"
 	@printf "  make kernel           # register Jupyter kernel\n"
 	@printf "  make run              # run one baseline config\n"
+	@printf "  make run-ollama       # run local Ollama live benchmark\n"
 	@printf "  make sweep            # run baseline sweep\n"
 	@printf "  make sweep-contention # run high-contention sweep\n"
 	@printf "  make plots            # generate plots for both sweeps\n"
@@ -22,6 +23,9 @@ kernel:
 
 run:
 	uv run mws-bench run --config configs/default.json --output results/default_run.json
+
+run-ollama:
+	uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json
 
 sweep:
 	uv run mws-bench sweep --config configs/default.json --output results/sweep.csv

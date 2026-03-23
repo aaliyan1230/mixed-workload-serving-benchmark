@@ -18,6 +18,9 @@ class JobResult:
     queue_wait_ms: float
     service_ms: float
     timed_out: bool
+    backend_model: str | None = None
+    backend_status: str | None = None
+    backend_error: str | None = None
 
 
 def _remove_index(q: deque[Job], idx: int) -> Job:
@@ -131,6 +134,8 @@ def simulate(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
                         queue_wait_ms=(current - job.arrival_s) * 1000.0,
                         service_ms=job.service_ms,
                         timed_out=latency_ms > job.timeout_ms,
+                        backend_model="simulated",
+                        backend_status="simulated",
                     )
                 )
                 dispatched = True
@@ -152,6 +157,8 @@ def simulate(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
                         queue_wait_ms=(current - job.arrival_s) * 1000.0,
                         service_ms=job.service_ms,
                         timed_out=latency_ms > job.timeout_ms,
+                        backend_model="simulated",
+                        backend_status="simulated",
                     )
                 )
                 dispatched = True
@@ -177,6 +184,8 @@ def simulate(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
                         queue_wait_ms=(current - job.arrival_s) * 1000.0,
                         service_ms=job.service_ms,
                         timed_out=latency_ms > job.timeout_ms,
+                        backend_model="simulated",
+                        backend_status="simulated",
                     )
                 )
                 dispatched = True

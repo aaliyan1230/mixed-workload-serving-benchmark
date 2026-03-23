@@ -40,6 +40,9 @@ uv run mws-bench sweep --config configs/high_contention.json --output results/hi
 # Plot a sweep CSV
 uv run python scripts/plot_sweep.py --input results/sweep.csv --output-dir results/plots/default
 
+# Run against local Ollama (no API key)
+uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json
+
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
 
@@ -104,6 +107,26 @@ make notebook
 
 - This scaffold intentionally uses standard library only.
 - You can extend it to real serving backends (Ray Serve, vLLM, SGLang) after validating synthetic policy trends.
+
+## Local Ollama Mode (No Key)
+
+- Install and start Ollama locally (`ollama serve`).
+- Pull at least one model (`ollama pull llama3.2:3b`).
+- Use `configs/live_ollama.json` and set model names that exist on your machine.
+
+Example:
+
+```bash
+uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json
+```
+
+Config fields:
+
+- `execution.mode`: use `simulate` or `live-ollama`
+- `ollama.base_url`: default `http://127.0.0.1:11434`
+- `ollama.streaming_model` / `ollama.agentic_model`: local model tags
+- `ollama.request_timeout_s`: per-request timeout ceiling
+- `ollama.*_prompt`, `ollama.*_num_predict`: load-shape controls for each class
 
 ## Notebook Workflow
 
