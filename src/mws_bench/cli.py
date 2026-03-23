@@ -3,7 +3,12 @@ from __future__ import annotations
 import argparse
 
 from .config import load_config
-from .runner import run_single_to_json, run_sweep_to_csv
+from .runner import (
+    SWEEP_MIXES,
+    SWEEP_POLICIES,
+    run_single_to_json,
+    run_sweep_to_csv,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -25,6 +30,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _print_sweep_plan() -> None:
+    print("Sweep plan")
+    print(f"  Policies: {', '.join(SWEEP_POLICIES)}")
+    mix_text = ", ".join(f"{s:.1f}:{a:.1f}" for s, a in SWEEP_MIXES)
+    print(f"  Mixes (streaming:agentic): {mix_text}")
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -36,7 +48,9 @@ def main() -> None:
         return
 
     if args.command == "sweep":
+        _print_sweep_plan()
         run_sweep_to_csv(cfg, args.output)
+        print(f"Wrote sweep CSV to {args.output}")
         return
 
     raise ValueError(f"Unknown command: {args.command}")

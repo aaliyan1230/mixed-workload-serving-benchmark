@@ -1,0 +1,41 @@
+{
+  "seed": 11,
+  "duration_s": 180.0,
+  "arrival_rate_rps": 14.0,
+  "mix": {
+    "streaming_ratio": 0.4,
+    "agentic_ratio": 0.6
+  },
+  "policy": {
+    "name": "fifo"
+  },
+  "workers": {
+    "streaming": 2,
+    "agentic": 2,
+    "shared": 1
+  },
+  "sla": {
+    "streaming_ms": 1000,
+    "agentic_ms": 5000
+  },
+  "cost": {
+    "streaming_unit": 0.0011,
+    "agentic_unit": 0.0065,
+    "timeout_penalty": 0.0012
+  },
+  "streaming_profile": {
+    "service_ms_mean": 420,
+    "service_ms_std": 130,
+    "timeout_ms": 2500
+  },
+  "agentic_profile": {
+    "steps_mean": 6,
+    "steps_std": 2,
+    "step_ms_mean": 780,
+    "step_ms_std": 280,
+    "stall_probability": 0.2,
+    "stall_ms": 3500,
+    "timeout_ms": 10000
+  },
+  "replicates": 7
+}

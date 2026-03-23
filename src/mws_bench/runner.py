@@ -11,6 +11,14 @@ from .simulator import simulate
 from .workload import generate_jobs
 
 
+SWEEP_POLICIES = ["fifo", "shortest-job-first", "agentic-priority"]
+SWEEP_MIXES = [
+    (0.9, 0.1),
+    (0.5, 0.5),
+    (0.1, 0.9),
+]
+
+
 def run_replicates(cfg: ExperimentConfig) -> list[AggregateMetrics]:
     rows: list[AggregateMetrics] = []
     for rep in range(cfg.replicates):
@@ -55,23 +63,17 @@ def run_single_to_json(cfg: ExperimentConfig, output_path: str | Path) -> None:
 
 
 def run_sweep_to_csv(cfg: ExperimentConfig, output_path: str | Path) -> None:
-    policies = ["fifo", "shortest-job-first", "agentic-priority"]
-    mixes = [
-        (0.9, 0.1),
-        (0.5, 0.5),
-        (0.1, 0.9),
-    ]
-
     rows: list[dict[str, float | str]] = []
-    for policy in policies:
-        for stream_ratio, agent_ratio in mixes:
+    for policy in SWEEP_POLICIES:
+        for stream_ratio, agent_ratio in SWEEP_MIXES:
             run_cfg = replace(
                 cfg,
                 policy=PolicyConfig(name=policy),
                 mix=MixConfig(streaming_ratio=stream_ratio, agentic_ratio=agent_ratio),
             )
             metrics = run_replicates(run_cfg)
-            row = summarize(metrics)
+            summary = summarize(metrics)
+            row: dict[str, float | str] = dict(summary)
             row["policy"] = policy
             row["streaming_ratio"] = stream_ratio
             row["agentic_ratio"] = agent_ratio

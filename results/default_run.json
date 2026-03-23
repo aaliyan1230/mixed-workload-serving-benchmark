@@ -49,7 +49,7 @@
       "p95_latency_ms": 318350.6416054234,
       "p99_latency_ms": 338766.0873748078,
       "sla_violation_rate": 0.4881720430107527,
-      "cost_per_success": 0.007113636363636247
+      "cost_per_success": 0.007113636363636305
     },
     {
       "total_jobs": 977,
@@ -59,7 +59,7 @@
       "p95_latency_ms": 334450.54004985903,
       "p99_latency_ms": 367042.84425223316,
       "sla_violation_rate": 0.48925281473899696,
-      "cost_per_success": 0.007099409448818782
+      "cost_per_success": 0.007099409448818837
     },
     {
       "total_jobs": 1015,
@@ -69,7 +69,7 @@
       "p95_latency_ms": 358944.3167087897,
       "p99_latency_ms": 387318.97099127114,
       "sla_violation_rate": 0.4798029556650246,
-      "cost_per_success": 0.0069578651685392075
+      "cost_per_success": 0.006957865168539262
     },
     {
       "total_jobs": 992,
@@ -79,7 +79,7 @@
       "p95_latency_ms": 333961.17268502765,
       "p99_latency_ms": 365669.52006783534,
       "sla_violation_rate": 0.48588709677419356,
-      "cost_per_success": 0.007078034682080807
+      "cost_per_success": 0.007078034682080862
     },
     {
       "total_jobs": 1001,
@@ -89,7 +89,7 @@
       "p95_latency_ms": 386717.6307087228,
       "p99_latency_ms": 415242.53155056137,
       "sla_violation_rate": 0.5124875124875125,
-      "cost_per_success": 0.007732394366197055
+      "cost_per_success": 0.007732394366197115
     }
   ],
   "summary": {
@@ -97,7 +97,7 @@
     "p95_latency_ms": 346484.8603515645,
     "p99_latency_ms": 374807.9908473418,
     "sla_violation_rate": 0.49112048453529605,
-    "cost_per_success": 0.00719626800585442,
+    "cost_per_success": 0.007196268005854477,
     "total_jobs": 983.0,
     "success_jobs": 508.4,
     "timeout_jobs": 474.6

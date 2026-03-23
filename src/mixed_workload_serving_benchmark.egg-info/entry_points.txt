@@ -1,0 +1,2 @@
+[console_scripts]
+mws-bench = mws_bench.cli:main

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+from math import inf
 
 from .config import ExperimentConfig
 from .workload import Job
@@ -19,13 +20,6 @@ class JobResult:
     timed_out: bool
 
 
-def _worker_count(cfg: ExperimentConfig, job_type: str) -> int:
-    dedicated = (
-        cfg.workers.streaming if job_type == "streaming" else cfg.workers.agentic
-    )
-    return dedicated + cfg.workers.shared
-
-
 def _remove_index(q: deque[Job], idx: int) -> Job:
     if idx == 0:
         return q.popleft()
@@ -41,81 +35,164 @@ def _remove_index(q: deque[Job], idx: int) -> Job:
     return target
 
 
-def _pick_next_job_fixed(policy_name: str, queue: deque[Job]) -> Job:
+def _available_worker_indices(free_times: list[float], now_s: float) -> list[int]:
+    return [idx for idx, free_t in enumerate(free_times) if free_t <= now_s]
+
+
+def _remove_job(queues: dict[str, deque[Job]], job_type: str, idx: int) -> Job:
+    return _remove_index(queues[job_type], idx)
+
+
+def _pick_job(
+    policy_name: str, queues: dict[str, deque[Job]], eligible_types: tuple[str, ...]
+) -> Job | None:
+    candidates: list[tuple[str, int, Job]] = []
+    for job_type in eligible_types:
+        for idx, job in enumerate(queues[job_type]):
+            candidates.append((job_type, idx, job))
+
+    if not candidates:
+        return None
+
     if policy_name == "fifo":
-        return queue.popleft()
+        job_type, idx, _ = min(candidates, key=lambda item: item[2].arrival_s)
+        return _remove_job(queues, job_type, idx)
 
     if policy_name == "shortest-job-first":
-        idx = min(range(len(queue)), key=lambda i: queue[i].service_ms)
-        return _remove_index(queue, idx)
+        job_type, idx, _ = min(candidates, key=lambda item: item[2].service_ms)
+        return _remove_job(queues, job_type, idx)
 
     if policy_name == "agentic-priority":
-        for idx, job in enumerate(queue):
-            if job.job_type == "agentic":
-                return _remove_index(queue, idx)
-        return queue.popleft()
+        for job_type, idx, _ in candidates:
+            if job_type == "agentic":
+                return _remove_job(queues, job_type, idx)
+        job_type, idx, _ = candidates[0]
+        return _remove_job(queues, job_type, idx)
 
-    return queue.popleft()
+    job_type, idx, _ = min(candidates, key=lambda item: item[2].arrival_s)
+    return _remove_job(queues, job_type, idx)
+
+
+def _next_busy_free_time(workers: dict[str, list[float]], now_s: float) -> float:
+    next_time = inf
+    for free_times in workers.values():
+        for free_t in free_times:
+            if free_t > now_s and free_t < next_time:
+                next_time = free_t
+    return next_time
 
 
 def simulate(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
-    # Uses a simple event progression over sorted arrivals and worker free-times.
-    pending: deque[Job] = deque()
-    arrivals = iter(sorted(jobs, key=lambda j: j.arrival_s))
-    next_arrival = next(arrivals, None)
+    arrivals = sorted(jobs, key=lambda j: j.arrival_s)
+    total_jobs = len(arrivals)
+    next_arrival_idx = 0
 
-    worker_free = {
-        "streaming": [0.0 for _ in range(_worker_count(cfg, "streaming"))],
-        "agentic": [0.0 for _ in range(_worker_count(cfg, "agentic"))],
+    queues: dict[str, deque[Job]] = {
+        "streaming": deque(),
+        "agentic": deque(),
     }
 
-    results: list[JobResult] = []
+    workers = {
+        "streaming": [0.0 for _ in range(cfg.workers.streaming)],
+        "agentic": [0.0 for _ in range(cfg.workers.agentic)],
+        "shared": [0.0 for _ in range(cfg.workers.shared)],
+    }
 
     current = 0.0
-    while next_arrival is not None or pending:
-        next_free = min(
-            min(worker_free["streaming"], default=float("inf")),
-            min(worker_free["agentic"], default=float("inf")),
-        )
+    results: list[JobResult] = []
 
-        if next_arrival is not None and (
-            not pending or next_arrival.arrival_s <= next_free
+    while len(results) < total_jobs:
+        while (
+            next_arrival_idx < total_jobs
+            and arrivals[next_arrival_idx].arrival_s <= current
         ):
-            current = max(current, next_arrival.arrival_s)
-            pending.append(next_arrival)
-            next_arrival = next(arrivals, None)
-            continue
+            arriving = arrivals[next_arrival_idx]
+            queues[arriving.job_type].append(arriving)
+            next_arrival_idx += 1
 
-        if not pending:
-            current = max(current, next_free)
-            continue
+        dispatched = True
+        while dispatched:
+            dispatched = False
 
-        job = _pick_next_job_fixed(cfg.policy.name, pending)
-        pool = worker_free[job.job_type]
-        idx = min(range(len(pool)), key=lambda i: pool[i])
-        start = max(current, pool[idx], job.arrival_s)
-        end = start + (job.service_ms / 1000.0)
-        pool[idx] = end
+            for idx in _available_worker_indices(workers["streaming"], current):
+                job = _pick_job(cfg.policy.name, queues, ("streaming",))
+                if job is None:
+                    break
+                end = current + (job.service_ms / 1000.0)
+                workers["streaming"][idx] = end
+                latency_ms = (end - job.arrival_s) * 1000.0
+                results.append(
+                    JobResult(
+                        id=job.id,
+                        job_type=job.job_type,
+                        arrival_s=job.arrival_s,
+                        start_s=current,
+                        end_s=end,
+                        queue_wait_ms=(current - job.arrival_s) * 1000.0,
+                        service_ms=job.service_ms,
+                        timed_out=latency_ms > job.timeout_ms,
+                    )
+                )
+                dispatched = True
 
-        latency_ms = (end - job.arrival_s) * 1000.0
-        timed_out = latency_ms > job.timeout_ms
+            for idx in _available_worker_indices(workers["agentic"], current):
+                job = _pick_job(cfg.policy.name, queues, ("agentic",))
+                if job is None:
+                    break
+                end = current + (job.service_ms / 1000.0)
+                workers["agentic"][idx] = end
+                latency_ms = (end - job.arrival_s) * 1000.0
+                results.append(
+                    JobResult(
+                        id=job.id,
+                        job_type=job.job_type,
+                        arrival_s=job.arrival_s,
+                        start_s=current,
+                        end_s=end,
+                        queue_wait_ms=(current - job.arrival_s) * 1000.0,
+                        service_ms=job.service_ms,
+                        timed_out=latency_ms > job.timeout_ms,
+                    )
+                )
+                dispatched = True
 
-        results.append(
-            JobResult(
-                id=job.id,
-                job_type=job.job_type,
-                arrival_s=job.arrival_s,
-                start_s=start,
-                end_s=end,
-                queue_wait_ms=(start - job.arrival_s) * 1000.0,
-                service_ms=job.service_ms,
-                timed_out=timed_out,
-            )
+            for idx in _available_worker_indices(workers["shared"], current):
+                job = _pick_job(
+                    cfg.policy.name,
+                    queues,
+                    ("streaming", "agentic"),
+                )
+                if job is None:
+                    break
+                end = current + (job.service_ms / 1000.0)
+                workers["shared"][idx] = end
+                latency_ms = (end - job.arrival_s) * 1000.0
+                results.append(
+                    JobResult(
+                        id=job.id,
+                        job_type=job.job_type,
+                        arrival_s=job.arrival_s,
+                        start_s=current,
+                        end_s=end,
+                        queue_wait_ms=(current - job.arrival_s) * 1000.0,
+                        service_ms=job.service_ms,
+                        timed_out=latency_ms > job.timeout_ms,
+                    )
+                )
+                dispatched = True
+
+        if len(results) >= total_jobs:
+            break
+
+        next_arrival_time = (
+            arrivals[next_arrival_idx].arrival_s
+            if next_arrival_idx < total_jobs
+            else inf
         )
+        next_free_time = _next_busy_free_time(workers, current)
+        current = min(next_arrival_time, next_free_time)
 
-        current = min(
-            min(worker_free["streaming"], default=current),
-            min(worker_free["agentic"], default=current),
-        )
+        if current == inf:
+            break
 
     return results

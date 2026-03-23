@@ -75,6 +75,22 @@ def _validate_mix(mix: MixConfig) -> None:
         raise ValueError(f"mix ratios must sum to 1.0, got {total}")
 
 
+def _validate_workers(workers: WorkerConfig) -> None:
+    if workers.streaming < 0 or workers.agentic < 0 or workers.shared < 0:
+        raise ValueError("worker counts must be non-negative")
+    if workers.streaming + workers.agentic + workers.shared == 0:
+        raise ValueError("at least one worker is required")
+
+
+def _validate_capacity(cfg: ExperimentConfig) -> None:
+    if cfg.mix.streaming_ratio > 0 and cfg.workers.streaming + cfg.workers.shared == 0:
+        raise ValueError("streaming workload requires streaming or shared workers")
+    if cfg.mix.agentic_ratio > 0 and cfg.workers.agentic + cfg.workers.shared == 0:
+        raise ValueError("agentic workload requires agentic or shared workers")
+    if cfg.replicates <= 0:
+        raise ValueError("replicates must be positive")
+
+
 def load_config(path: str | Path) -> ExperimentConfig:
     data = json.loads(Path(path).read_text())
 
@@ -93,4 +109,6 @@ def load_config(path: str | Path) -> ExperimentConfig:
     )
 
     _validate_mix(cfg.mix)
+    _validate_workers(cfg.workers)
+    _validate_capacity(cfg)
     return cfg
