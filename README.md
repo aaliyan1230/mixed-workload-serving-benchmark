@@ -23,7 +23,10 @@ This project is designed for fast, reproducible experiments on scheduling behavi
 ```bash
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e ".[dev]"
+uv sync --extra dev
+
+# Register notebook kernel for this repo (one time)
+uv run python -m ipykernel install --user --name mws-bench --display-name "Python (mws-bench)"
 
 # Run one config
 uv run mws-bench run --config configs/default.json --output results/default_run.json
@@ -39,6 +42,12 @@ uv run python scripts/plot_sweep.py --input results/sweep.csv --output-dir resul
 
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
+
+# Auto-generate markdown report from both sweeps
+uv run python scripts/make_report_md.py --baseline results/sweep.csv --contention results/high_contention_sweep.csv --output docs/results.md
+
+# Open notebook entrypoint for analysis and write-up
+uv run jupyter lab notebooks/analysis_entrypoint.ipynb
 ```
 
 ## Lockfile
@@ -70,8 +79,17 @@ uv sync
 - `configs/high_contention.json`: stress profile for queue pressure and timeouts
 - `tests/`: smoke tests for generation, simulation, and metrics
 - `scripts/plot_sweep.py`: grouped bar-chart generator for core metrics
+- `scripts/make_report_md.py`: auto-generates `docs/results.md` from sweep CSVs
+- `docs/technical_note_template.md`: 2-3 page note scaffold
+- `notebooks/analysis_entrypoint.ipynb`: analysis/report notebook entrypoint
 
 ## Notes
 
 - This scaffold intentionally uses standard library only.
 - You can extend it to real serving backends (Ray Serve, vLLM, SGLang) after validating synthetic policy trends.
+
+## Notebook Workflow
+
+- Use `notebooks/analysis_entrypoint.ipynb` as the main analysis entrypoint.
+- The notebook loads `results/sweep.csv` and `results/high_contention_sweep.csv`, builds quick tables/plots, and provides markdown prompts for findings.
+- Save finalized narrative in `docs/results.md` and/or `docs/technical_note_template.md`.
