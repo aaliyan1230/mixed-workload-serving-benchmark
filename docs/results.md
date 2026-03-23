@@ -1,49 +1,75 @@
 # Mixed Workload Benchmark Results
 
-This document is auto-generated from sweep CSV outputs. Values are mean +- 95% CI across replicates.
+Data sources used in this report:
 
-## Baseline Scenario
+- `results/sweep.csv` (baseline simulator sweep)
+- `results/high_contention_sweep.csv` (high-contention simulator sweep)
+- `results/live_ollama_run.json` (live local-model run)
+- `results/live_ollama_trace.jsonl` (request-level live trace)
 
-### Best policy per metric
+## Executive Summary
 
-- Throughput (rps): `fifo` (higher is better)
-- P95 latency (ms): `shortest-job-first` (lower is better)
-- SLA violation rate: `shortest-job-first` (lower is better)
-- Cost per success: `fifo` (lower is better)
+- Under baseline conditions, the 0.9:0.1 mix (streaming:agentic) dominates all other mixes for both throughput and SLA reliability.
+- Under high contention, `shortest-job-first` is clearly superior across all tracked metrics, especially throughput and SLA violation.
+- Live Ollama smoke run validates end-to-end trace instrumentation and exposes queueing effects (no hard timeouts, but rising queue wait/latency for later requests).
 
-### Full table
-
-| policy | mix (s:a) | throughput | p95 latency | SLA viol. | cost/success |
-|---|---:|---:|---:|---:|---:|
-| fifo | 0.9:0.1 | 7.7209 +- 0.3700 | 4423.7 +- 513.9 | 0.0275 +- 0.0075 | 0.0015 +- 0.0000 |
-| fifo | 0.5:0.5 | 1.0136 +- 0.0525 | 346484.9 +- 23467.3 | 0.4911 +- 0.0109 | 0.0072 +- 0.0003 |
-| fifo | 0.1:0.9 | 0.1261 +- 0.0083 | 726153.2 +- 22474.2 | 0.8916 +- 0.0047 | 0.0508 +- 0.0030 |
-| shortest-job-first | 0.9:0.1 | 7.7048 +- 0.4212 | 3892.1 +- 262.7 | 0.0272 +- 0.0068 | 0.0015 +- 0.0000 |
-| shortest-job-first | 0.5:0.5 | 1.3727 +- 0.0681 | 341348.5 +- 17805.6 | 0.3237 +- 0.0111 | 0.0051 +- 0.0002 |
-| shortest-job-first | 0.1:0.9 | 0.3798 +- 0.0105 | 725691.4 +- 23169.2 | 0.6699 +- 0.0072 | 0.0164 +- 0.0003 |
-| agentic-priority | 0.9:0.1 | 7.7209 +- 0.3700 | 4423.7 +- 513.9 | 0.0275 +- 0.0075 | 0.0015 +- 0.0000 |
-| agentic-priority | 0.5:0.5 | 1.0136 +- 0.0525 | 346484.9 +- 23467.3 | 0.4911 +- 0.0109 | 0.0072 +- 0.0003 |
-| agentic-priority | 0.1:0.9 | 0.1261 +- 0.0083 | 726153.2 +- 22474.2 | 0.8916 +- 0.0047 | 0.0508 +- 0.0030 |
-
-## High-Contention Scenario
+## Baseline Simulator Sweep
 
 ### Best policy per metric
 
-- Throughput (rps): `shortest-job-first` (higher is better)
-- P95 latency (ms): `shortest-job-first` (lower is better)
-- SLA violation rate: `shortest-job-first` (lower is better)
-- Cost per success: `shortest-job-first` (lower is better)
+- Throughput: `fifo` at 0.9:0.1 (7.7209 +- 0.3700 rps)
+- P95 latency: `shortest-job-first` at 0.9:0.1 (3892.1 +- 262.7 ms)
+- SLA violation: `shortest-job-first` at 0.9:0.1 (0.0272 +- 0.0068)
+- Cost per success: `fifo` at 0.9:0.1 (0.0015 +- 0.0000)
 
-### Full table
+### Pareto frontier (throughput up, SLA violation down)
 
-| policy | mix (s:a) | throughput | p95 latency | SLA viol. | cost/success |
-|---|---:|---:|---:|---:|---:|
-| fifo | 0.9:0.1 | 0.0416 +- 0.0047 | 311073.7 +- 28645.3 | 0.9954 +- 0.0011 | 0.2301 +- 0.0309 |
-| fifo | 0.5:0.5 | 0.0108 +- 0.0034 | 3219598.7 +- 80235.5 | 0.9955 +- 0.0011 | 0.3643 +- 0.1155 |
-| fifo | 0.1:0.9 | 0.0384 +- 0.0011 | 6132573.1 +- 88651.5 | 0.8992 +- 0.0028 | 0.0691 +- 0.0020 |
-| shortest-job-first | 0.9:0.1 | 1.6760 +- 0.0927 | 289371.2 +- 17591.6 | 0.5031 +- 0.0063 | 0.0037 +- 0.0001 |
-| shortest-job-first | 0.5:0.5 | 0.3246 +- 0.0086 | 2970589.3 +- 67502.0 | 0.5926 +- 0.0061 | 0.0089 +- 0.0002 |
-| shortest-job-first | 0.1:0.9 | 0.0674 +- 0.0020 | 5748122.7 +- 87726.8 | 0.8368 +- 0.0046 | 0.0388 +- 0.0013 |
-| agentic-priority | 0.9:0.1 | 0.0359 +- 0.0063 | 311050.6 +- 28210.9 | 0.9957 +- 0.0010 | 0.2745 +- 0.0506 |
-| agentic-priority | 0.5:0.5 | 0.0108 +- 0.0034 | 3219598.7 +- 80235.5 | 0.9955 +- 0.0011 | 0.3643 +- 0.1155 |
-| agentic-priority | 0.1:0.9 | 0.0384 +- 0.0011 | 6132573.1 +- 88651.5 | 0.8992 +- 0.0028 | 0.0691 +- 0.0020 |
+- `shortest-job-first` 0.9:0.1 -> 7.7048 rps, 0.0272 SLA violation
+- `fifo` 0.9:0.1 -> 7.7209 rps, 0.0275 SLA violation
+- `agentic-priority` 0.9:0.1 -> 7.7209 rps, 0.0275 SLA violation
+
+Interpretation: at baseline load, policy choice matters less than staying in streaming-heavy mix; among Pareto points, `shortest-job-first` gives slightly lower SLA risk while `fifo` gives slightly higher throughput.
+
+## High-Contention Simulator Sweep
+
+### Best policy per metric
+
+- Throughput: `shortest-job-first` at 0.9:0.1 (1.6760 +- 0.0927 rps)
+- P95 latency: `shortest-job-first` at 0.9:0.1 (289371.2 +- 17591.6 ms)
+- SLA violation: `shortest-job-first` at 0.9:0.1 (0.5031 +- 0.0063)
+- Cost per success: `shortest-job-first` at 0.9:0.1 (0.0037 +- 0.0001)
+
+### Pareto frontier (throughput up, SLA violation down)
+
+- `shortest-job-first` 0.9:0.1 -> 1.6760 rps, 0.5031 SLA violation
+
+Interpretation: under heavy contention, one policy dominates; this is a strong default recommendation unless objective weights change materially.
+
+## Live Ollama Smoke Run (No API Key)
+
+Config: `configs/live_ollama.json` (mode `live-ollama`, model `qwen3:4b` for both classes).
+
+### Aggregate run summary
+
+- total jobs: 10
+- success jobs: 10
+- timeout jobs: 0
+- throughput: 0.4682 rps
+- p95 latency: 10993.59 ms
+- p99 latency: 10995.32 ms
+- SLA violation rate: 0.3000
+- cost per success: 0.0020
+
+### Request-level trace summary
+
+- trace rows: 10
+- backend status counts: `ok` = 10
+- timeout flags: 0/10
+- job mix observed: 8 streaming, 2 agentic
+- qualitative behavior: queue wait grows substantially for late-arriving requests (peaking around 8.47 s), with tail latency around 11 s.
+
+## Practical Takeaways
+
+- For simulator-driven policy selection, start with `shortest-job-first` when contention risk is high.
+- Keep a streaming-heavy admission mix where possible; it dominates mixed/agentic-heavy mixes in both throughput and SLA.
+- Live local runs are now instrumented enough for failure-mode analysis; next step is multi-replicate live sweeps to reduce variance and validate policy ranking stability.
