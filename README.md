@@ -58,11 +58,20 @@ uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/liv
 # Run against vLLM OpenAI-compatible endpoint
 uv run mws-bench run --config configs/live_vllm.json --output results/live_vllm_run.json --trace-output results/live_vllm_trace.jsonl
 
+# Run replicate-5 vLLM sweep with per-scenario traces
+uv run mws-bench sweep --config configs/live_vllm_r5.json --output results/live_vllm_sweep_r5.csv --trace-output-dir results/traces/live_vllm_r5
+
 # Run against SGLang OpenAI-compatible endpoint
 uv run mws-bench run --config configs/live_sglang.json --output results/live_sglang_run.json --trace-output results/live_sglang_trace.jsonl
 
+# Run replicate-5 SGLang sweep with per-scenario traces
+uv run mws-bench sweep --config configs/live_sglang_r5.json --output results/live_sglang_sweep_r5.csv --trace-output-dir results/traces/live_sglang_r5
+
 # Run against Ray Serve OpenAI-compatible endpoint
 uv run mws-bench run --config configs/live_ray_serve.json --output results/live_ray_serve_run.json --trace-output results/live_ray_serve_trace.jsonl
+
+# Run replicate-5 Ray Serve sweep with per-scenario traces
+uv run mws-bench sweep --config configs/live_ray_serve_r5.json --output results/live_ray_serve_sweep_r5.csv --trace-output-dir results/traces/live_ray_serve_r5
 
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention

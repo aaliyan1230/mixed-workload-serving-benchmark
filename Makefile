@@ -1,4 +1,4 @@
-.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace run-vllm run-sglang run-ray-serve sweep sweep-contention sweep-ollama-r5 plots report test notebook all
+.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace run-vllm run-sglang run-ray-serve sweep sweep-contention sweep-ollama-r5 sweep-vllm-r5 sweep-sglang-r5 sweep-ray-serve-r5 plots report test notebook all
 
 help:
 	@printf "Available targets:\n"
@@ -14,6 +14,9 @@ help:
 	@printf "  make sweep            # run baseline sweep\n"
 	@printf "  make sweep-contention # run high-contention sweep\n"
 	@printf "  make sweep-ollama-r5  # run replicate-5 local Ollama sweep with traces\n"
+	@printf "  make sweep-vllm-r5    # run replicate-5 vLLM sweep with traces\n"
+	@printf "  make sweep-sglang-r5  # run replicate-5 SGLang sweep with traces\n"
+	@printf "  make sweep-ray-serve-r5 # run replicate-5 Ray Serve sweep with traces\n"
 	@printf "  make plots            # generate plots for both sweeps\n"
 	@printf "  make report           # generate docs/results.md\n"
 	@printf "  make test             # run test suite\n"
@@ -56,6 +59,15 @@ sweep-contention:
 
 sweep-ollama-r5:
 	uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/live_ollama_sweep_r5.csv --trace-output-dir results/traces/live_ollama_r5
+
+sweep-vllm-r5:
+	uv run mws-bench sweep --config configs/live_vllm_r5.json --output results/live_vllm_sweep_r5.csv --trace-output-dir results/traces/live_vllm_r5
+
+sweep-sglang-r5:
+	uv run mws-bench sweep --config configs/live_sglang_r5.json --output results/live_sglang_sweep_r5.csv --trace-output-dir results/traces/live_sglang_r5
+
+sweep-ray-serve-r5:
+	uv run mws-bench sweep --config configs/live_ray_serve_r5.json --output results/live_ray_serve_sweep_r5.csv --trace-output-dir results/traces/live_ray_serve_r5
 
 plots:
 	uv run python scripts/plot_sweep.py --input results/sweep.csv --output-dir results/plots/default

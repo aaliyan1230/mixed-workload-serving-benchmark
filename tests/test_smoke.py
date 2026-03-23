@@ -104,6 +104,21 @@ def test_live_ray_serve_config_loads() -> None:
     assert cfg.ray_serve.base_url.startswith("http")
 
 
+@pytest.mark.parametrize(
+    ("config_name", "mode"),
+    [
+        ("live_vllm_r5.json", "live-vllm"),
+        ("live_sglang_r5.json", "live-sglang"),
+        ("live_ray_serve_r5.json", "live-ray-serve"),
+    ],
+)
+def test_live_replicate5_config_loads(config_name: str, mode: str) -> None:
+    cfg_path = Path(__file__).resolve().parents[1] / "configs" / config_name
+    cfg = load_config(cfg_path)
+    assert cfg.execution.mode == mode
+    assert cfg.replicates == 5
+
+
 def test_invalid_execution_mode_raises(tmp_path: Path) -> None:
     config_path = tmp_path / "bad_mode.json"
     config_path.write_text(

@@ -1,0 +1,55 @@
+{
+  "seed": 7,
+  "duration_s": 12.0,
+  "arrival_rate_rps": 0.35,
+  "mix": {
+    "streaming_ratio": 0.6,
+    "agentic_ratio": 0.4
+  },
+  "policy": {
+    "name": "fifo"
+  },
+  "workers": {
+    "streaming": 1,
+    "agentic": 1,
+    "shared": 0
+  },
+  "sla": {
+    "streaming_ms": 8000,
+    "agentic_ms": 20000
+  },
+  "cost": {
+    "streaming_unit": 0.001,
+    "agentic_unit": 0.006,
+    "timeout_penalty": 0.001
+  },
+  "streaming_profile": {
+    "service_ms_mean": 500,
+    "service_ms_std": 100,
+    "timeout_ms": 15000
+  },
+  "agentic_profile": {
+    "steps_mean": 3,
+    "steps_std": 1,
+    "step_ms_mean": 1000,
+    "step_ms_std": 300,
+    "stall_probability": 0.05,
+    "stall_ms": 1500,
+    "timeout_ms": 30000
+  },
+  "execution": {
+    "mode": "live-ray-serve"
+  },
+  "ray_serve": {
+    "base_url": "http://127.0.0.1:8001",
+    "api_key_env": "RAY_SERVE_API_KEY",
+    "request_timeout_s": 45.0,
+    "streaming_model": "Qwen/Qwen2.5-3B-Instruct",
+    "agentic_model": "Qwen/Qwen2.5-3B-Instruct",
+    "streaming_prompt": "Answer in one short sentence: what is 2+2?",
+    "agentic_prompt": "List 5 concise bullet points on why latency benchmarking matters.",
+    "streaming_max_tokens": 64,
+    "agentic_max_tokens": 192
+  },
+  "replicates": 5
+}
