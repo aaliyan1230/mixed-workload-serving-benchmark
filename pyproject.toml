@@ -17,9 +17,16 @@ dependencies = []
 analysis = [
   "matplotlib>=3.8",
 ]
+notebook = [
+  "jupyterlab>=4.2",
+  "ipykernel>=6.29",
+  "matplotlib>=3.8",
+]
 dev = [
   "pytest>=8.0",
   "matplotlib>=3.8",
+  "jupyterlab>=4.2",
+  "ipykernel>=6.29",
 ]
 
 [project.scripts]

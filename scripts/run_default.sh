@@ -10,4 +10,6 @@ if uv run python -c "import matplotlib" >/dev/null 2>&1; then
   uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
 fi
 
+uv run python scripts/make_report_md.py --baseline results/sweep.csv --contention results/high_contention_sweep.csv --output docs/results.md
+
 echo "Wrote baseline + high-contention results in results/"
