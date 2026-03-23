@@ -72,6 +72,19 @@ class OllamaConfig:
 
 
 @dataclass(frozen=True)
+class VllmConfig:
+    base_url: str
+    api_key_env: str
+    request_timeout_s: float
+    streaming_model: str
+    agentic_model: str
+    streaming_prompt: str
+    agentic_prompt: str
+    streaming_max_tokens: int
+    agentic_max_tokens: int
+
+
+@dataclass(frozen=True)
 class ExperimentConfig:
     seed: int
     duration_s: float
@@ -85,6 +98,7 @@ class ExperimentConfig:
     agentic_profile: AgenticProfile
     execution: ExecutionConfig
     ollama: OllamaConfig
+    vllm: VllmConfig
     replicates: int
 
 
@@ -111,7 +125,7 @@ def _validate_capacity(cfg: ExperimentConfig) -> None:
 
 
 def _validate_execution(cfg: ExperimentConfig) -> None:
-    supported_modes = {"simulate", "live-ollama"}
+    supported_modes = {"simulate", "live-ollama", "live-vllm"}
     if cfg.execution.mode not in supported_modes:
         raise ValueError(
             f"execution mode must be one of {sorted(supported_modes)}, got {cfg.execution.mode}"
@@ -125,12 +139,21 @@ def _validate_execution(cfg: ExperimentConfig) -> None:
         if not cfg.ollama.streaming_model or not cfg.ollama.agentic_model:
             raise ValueError("ollama models are required for live-ollama mode")
 
+    if cfg.execution.mode == "live-vllm":
+        if cfg.vllm.request_timeout_s <= 0:
+            raise ValueError("vllm request_timeout_s must be positive")
+        if not cfg.vllm.base_url:
+            raise ValueError("vllm base_url is required for live-vllm mode")
+        if not cfg.vllm.streaming_model or not cfg.vllm.agentic_model:
+            raise ValueError("vllm models are required for live-vllm mode")
+
 
 def load_config(path: str | Path) -> ExperimentConfig:
     data = json.loads(Path(path).read_text())
 
     execution_data = data.get("execution", {"mode": "simulate"})
     ollama_data = data.get("ollama", {})
+    vllm_data = data.get("vllm", {})
 
     cfg = ExperimentConfig(
         seed=int(data["seed"]),
@@ -163,6 +186,27 @@ def load_config(path: str | Path) -> ExperimentConfig:
             ),
             streaming_num_predict=int(ollama_data.get("streaming_num_predict", 64)),
             agentic_num_predict=int(ollama_data.get("agentic_num_predict", 192)),
+        ),
+        vllm=VllmConfig(
+            base_url=str(vllm_data.get("base_url", "http://127.0.0.1:8000")),
+            api_key_env=str(vllm_data.get("api_key_env", "VLLM_API_KEY")),
+            request_timeout_s=float(vllm_data.get("request_timeout_s", 45.0)),
+            streaming_model=str(vllm_data.get("streaming_model", "Qwen/Qwen2.5-3B-Instruct")),
+            agentic_model=str(vllm_data.get("agentic_model", "Qwen/Qwen2.5-3B-Instruct")),
+            streaming_prompt=str(
+                vllm_data.get(
+                    "streaming_prompt",
+                    "Answer in one short sentence: what is 2+2?",
+                )
+            ),
+            agentic_prompt=str(
+                vllm_data.get(
+                    "agentic_prompt",
+                    "List 5 concise bullet points on why latency benchmarking matters.",
+                )
+            ),
+            streaming_max_tokens=int(vllm_data.get("streaming_max_tokens", 64)),
+            agentic_max_tokens=int(vllm_data.get("agentic_max_tokens", 192)),
         ),
         replicates=int(data["replicates"]),
     )

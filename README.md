@@ -55,6 +55,9 @@ uv run mws-bench run --config configs/live_ollama.json --output results/live_oll
 # Run replicate-5 local Ollama sweep with per-scenario traces
 uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/live_ollama_sweep_r5.csv --trace-output-dir results/traces/live_ollama_r5
 
+# Run against vLLM OpenAI-compatible endpoint
+uv run mws-bench run --config configs/live_vllm.json --output results/live_vllm_run.json --trace-output results/live_vllm_trace.jsonl
+
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
 
@@ -120,7 +123,9 @@ make notebook
 - This scaffold intentionally uses standard library only.
 - You can extend it to real serving backends (Ray Serve, vLLM, SGLang) after validating synthetic policy trends.
 
-## Local Ollama Mode (No Key)
+## Live Backend Modes
+
+### Local Ollama Mode (No Key)
 
 - Install and start Ollama locally (`ollama serve`).
 - Pull at least one model (`ollama pull llama3.2:3b`).
@@ -139,6 +144,27 @@ Config fields:
 - `ollama.streaming_model` / `ollama.agentic_model`: local model tags
 - `ollama.request_timeout_s`: per-request timeout ceiling
 - `ollama.*_prompt`, `ollama.*_num_predict`: load-shape controls for each class
+
+### vLLM Mode (OpenAI-Compatible)
+
+- Start a vLLM OpenAI-compatible server (for example on `http://127.0.0.1:8000`).
+- Use `configs/live_vllm.json` and set model names that your server exposes.
+- Optional auth: set `VLLM_API_KEY` (or your configured env var in `vllm.api_key_env`).
+
+Example:
+
+```bash
+uv run mws-bench run --config configs/live_vllm.json --output results/live_vllm_run.json --trace-output results/live_vllm_trace.jsonl
+```
+
+Config fields:
+
+- `execution.mode`: `live-vllm`
+- `vllm.base_url`: OpenAI-compatible base URL
+- `vllm.api_key_env`: env var name used for bearer token
+- `vllm.streaming_model` / `vllm.agentic_model`: model ids
+- `vllm.request_timeout_s`: per-request timeout ceiling
+- `vllm.*_prompt`, `vllm.*_max_tokens`: load-shape controls for each class
 
 Trace fields include per-request latency and backend metadata:
 

@@ -1,4 +1,4 @@
-.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace sweep sweep-contention sweep-ollama-r5 plots report test notebook all
+.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace run-vllm sweep sweep-contention sweep-ollama-r5 plots report test notebook all
 
 help:
 	@printf "Available targets:\n"
@@ -8,6 +8,7 @@ help:
 	@printf "  make run-trace        # run baseline config with request-level trace\n"
 	@printf "  make run-ollama       # run local Ollama live benchmark\n"
 	@printf "  make run-ollama-trace # run local Ollama benchmark with request-level trace\n"
+	@printf "  make run-vllm         # run vLLM OpenAI-compatible benchmark with trace\n"
 	@printf "  make sweep            # run baseline sweep\n"
 	@printf "  make sweep-contention # run high-contention sweep\n"
 	@printf "  make sweep-ollama-r5  # run replicate-5 local Ollama sweep with traces\n"
@@ -35,6 +36,9 @@ run-ollama:
 
 run-ollama-trace:
 	uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json --trace-output results/live_ollama_trace.jsonl
+
+run-vllm:
+	uv run mws-bench run --config configs/live_vllm.json --output results/live_vllm_run.json --trace-output results/live_vllm_trace.jsonl
 
 sweep:
 	uv run mws-bench sweep --config configs/default.json --output results/sweep.csv
