@@ -32,6 +32,13 @@ Mixed serving systems must handle low-latency streaming requests and longer agen
 - Tail latency: p95 ~ 10.99 s.
 - Trace shows increasing queue wait for later requests (up to ~8.47 s), indicating queueing pressure even without hard failures.
 
+### 3.4 Live Ollama sweep (now available)
+
+- 9 policy x mix points were executed with request-level traces.
+- All points in this short profile completed with zero timeout flags.
+- Throughput ordering is close, but `agentic-priority` is marginally highest at all three mixes in this specific run.
+- As agentic share increases (0.9:0.1 -> 0.1:0.9), throughput drops and p95 latency rises substantially, matching expected queueing behavior.
+
 ## 4. Interpretation
 
 - Under normal conditions, policy differences are second-order once workload is streaming-heavy.
@@ -47,12 +54,11 @@ Mixed serving systems must handle low-latency streaming requests and longer agen
 ## 6. Current Gaps
 
 - Live evidence is still single-run smoke and single-model profile.
-- No live sweep across policy x mix yet.
+- Live sweep exists but currently uses `replicates=1`.
 - No external backend comparison (Ray Serve, vLLM, SGLang) yet.
 
 ## 7. Next Immediate Actions
 
-- Run traced live sweep and persist per-scenario trace files:
-	`uv run mws-bench sweep --config configs/live_ollama.json --output results/live_ollama_sweep.csv --trace-output-dir results/traces/live_ollama`
+- Re-run live sweep with higher replicate count (for example `replicates=5`) to add confidence intervals.
 - Add notebook section for class-level queue-wait distributions across sweep traces.
-- Promote this file to final note once live multi-replicate results are available.
+- Promote this file to final note once multi-replicate live uncertainty bands are included.
