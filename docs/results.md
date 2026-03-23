@@ -8,13 +8,16 @@ Data sources used in this report:
 - `results/live_ollama_trace.jsonl` (request-level live trace)
 - `results/live_ollama_sweep.csv` (live local-model sweep)
 - `results/traces/live_ollama/*.jsonl` (per-scenario live traces)
+- `results/live_ollama_sweep_r5.csv` (live local-model sweep, replicates=5)
+- `results/traces/live_ollama_r5/*.jsonl` (live sweep traces, replicates=5)
 
 ## Executive Summary
 
 - Under baseline conditions, the 0.9:0.1 mix (streaming:agentic) dominates all other mixes for both throughput and SLA reliability.
 - Under high contention, `shortest-job-first` is clearly superior across all tracked metrics, especially throughput and SLA violation.
 - Live Ollama smoke run validates end-to-end trace instrumentation and exposes queueing effects (no hard timeouts, but rising queue wait/latency for later requests).
-- Live Ollama sweep is now available and shows consistent ordering: at each mix, `agentic-priority` narrowly leads throughput with zero timeouts in this short-duration setup.
+- Replicate-5 live sweep confirms stable mix-level trends: agentic-heavy mixes reduce throughput and increase tail latency.
+- Queue-wait distributions from 231 live traced requests show measurable scheduling differences by policy/mix that are invisible in aggregate-only views.
 
 ## Baseline Simulator Sweep
 
@@ -71,7 +74,7 @@ Config: `configs/live_ollama.json` (mode `live-ollama`, model `qwen3:4b` for bot
 - job mix observed: 8 streaming, 2 agentic
 - qualitative behavior: queue wait grows substantially for late-arriving requests (peaking around 8.47 s), with tail latency around 11 s.
 
-## Live Ollama Sweep (Real Backend)
+## Live Ollama Sweep (Real Backend, Replicates=1)
 
 Command used:
 
@@ -96,8 +99,40 @@ Command used:
 - Differences between policies are present but small in this short smoke profile.
 - Because `replicates=1`, treat these as directional; do not make hard policy commitments without multi-replicate live runs.
 
+## Live Ollama Sweep (Real Backend, Replicates=5)
+
+Command used:
+
+`uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/live_ollama_sweep_r5.csv --trace-output-dir results/traces/live_ollama_r5`
+
+### Aggregate highlights
+
+- Best throughput point: `shortest-job-first` at 0.9:0.1 -> 0.4182 +- 0.1040 rps
+- Best p95 latency point: `shortest-job-first` at 0.9:0.1 -> 4856.1 +- 2055.1 ms
+- Lowest SLA violation points: all 0.1:0.9 live points report 0.0 (with this small-job regime)
+
+### Mix-level trend (consistent across policies)
+
+- 0.9:0.1 mix: highest throughput (~0.408 to 0.418 rps), lower p95 (~4.86 to 5.27 s)
+- 0.5:0.5 mix: mid throughput (~0.340 to 0.349 rps), higher p95 (~8.62 to 8.83 s)
+- 0.1:0.9 mix: lowest throughput (~0.234 to 0.243 rps), highest p95 (~10.92 to 11.57 s)
+
+### Queue-wait trace analysis (from notebook)
+
+- Dataset size: 231 traced requests across 9 policy/mix scenarios
+- Backend status: all traced rows report `ok`
+- Highest mean queue waits were observed for:
+	- `fifo` 0.1:0.9 -> mean 1780.26 ms
+	- `agentic-priority` 0.5:0.5 -> mean 1699.76 ms
+	- `fifo` 0.5:0.5 -> mean 1697.44 ms
+- Lowest mean queue waits were observed for:
+	- `shortest-job-first` 0.9:0.1 -> mean 518.55 ms
+	- `agentic-priority` 0.9:0.1 -> mean 589.32 ms
+
+Interpretation: policy effects are modest but visible; keeping traffic in streaming-heavy regimes remains the strongest lever for both throughput and queue delay.
+
 ## Practical Takeaways
 
 - For simulator-driven policy selection, start with `shortest-job-first` when contention risk is high.
 - Keep a streaming-heavy admission mix where possible; it dominates mixed/agentic-heavy mixes in both throughput and SLA.
-- Live local runs are now instrumented enough for failure-mode analysis; immediate next step is increasing live replicates to reduce variance and validate ranking stability.
+- Live local runs now include replicate-5 sweeps plus request-level traces; next step is extending the same trace analytics to alternate local models and larger worker splits.

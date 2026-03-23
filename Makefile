@@ -1,4 +1,4 @@
-.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace sweep sweep-contention plots report test notebook all
+.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace sweep sweep-contention sweep-ollama-r5 plots report test notebook all
 
 help:
 	@printf "Available targets:\n"
@@ -10,6 +10,7 @@ help:
 	@printf "  make run-ollama-trace # run local Ollama benchmark with request-level trace\n"
 	@printf "  make sweep            # run baseline sweep\n"
 	@printf "  make sweep-contention # run high-contention sweep\n"
+	@printf "  make sweep-ollama-r5  # run replicate-5 local Ollama sweep with traces\n"
 	@printf "  make plots            # generate plots for both sweeps\n"
 	@printf "  make report           # generate docs/results.md\n"
 	@printf "  make test             # run test suite\n"
@@ -40,6 +41,9 @@ sweep:
 
 sweep-contention:
 	uv run mws-bench sweep --config configs/high_contention.json --output results/high_contention_sweep.csv
+
+sweep-ollama-r5:
+	uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/live_ollama_sweep_r5.csv --trace-output-dir results/traces/live_ollama_r5
 
 plots:
 	uv run python scripts/plot_sweep.py --input results/sweep.csv --output-dir results/plots/default

@@ -9,7 +9,7 @@ Mixed serving systems must handle low-latency streaming requests and longer agen
 - Mixes: 0.9:0.1, 0.5:0.5, 0.1:0.9 (streaming:agentic)
 - Policies: `fifo`, `shortest-job-first`, `agentic-priority`
 - Simulator scenarios: baseline and high-contention sweeps
-- Live scenario: local Ollama smoke run (`qwen3:4b`, no API key)
+- Live scenario: local Ollama smoke run plus replicate-5 live sweep (`qwen3:4b`, no API key)
 - Metrics: throughput, p95/p99 latency, SLA violation, cost/success
 
 ## 3. Findings
@@ -35,30 +35,39 @@ Mixed serving systems must handle low-latency streaming requests and longer agen
 ### 3.4 Live Ollama sweep (now available)
 
 - 9 policy x mix points were executed with request-level traces.
-- All points in this short profile completed with zero timeout flags.
-- Throughput ordering is close, but `agentic-priority` is marginally highest at all three mixes in this specific run.
+- Replicate-1 run: all points completed with zero timeout flags; `agentic-priority` was marginally highest by throughput at each mix.
+- Replicate-5 run: highest throughput/p95 points concentrate at 0.9:0.1 with `shortest-job-first` slightly leading on mean throughput and p95 latency.
 - As agentic share increases (0.9:0.1 -> 0.1:0.9), throughput drops and p95 latency rises substantially, matching expected queueing behavior.
+
+### 3.5 Queue-wait behavior from replicate-5 traces
+
+- 231 traced requests were analyzed across 9 policy/mix scenarios.
+- All backend statuses were `ok` in this experiment slice.
+- Mean queue wait is lowest in streaming-heavy scenarios and highest in mixed/agentic-heavy scenarios.
+- The strongest queue-wait outcomes were seen at 0.9:0.1 with `shortest-job-first`.
 
 ## 4. Interpretation
 
 - Under normal conditions, policy differences are second-order once workload is streaming-heavy.
 - Under contention, policy choice becomes first-order; `shortest-job-first` is the robust default from current evidence.
 - Live run confirms instrumentation is functioning and uncovers queue buildup behavior not obvious from aggregate metrics alone.
+- Queue-wait distribution plots in the notebook make scheduler and mix effects visible beyond headline p95/p99 values.
 
 ## 5. Immediate Recommendations
 
 - Default simulator recommendation for contested systems: `shortest-job-first`.
 - Operational recommendation: keep admission or shaping biased toward streaming-heavy mix when feasible.
 - Keep request-level trace logging enabled in live runs; aggregate-only reporting hides queue dynamics.
+- For real-backend tuning, prioritize mix-shaping and worker policy under streaming-heavy traffic before micro-optimizing policy differences in heavily agentic mixes.
 
 ## 6. Current Gaps
 
-- Live evidence is still single-run smoke and single-model profile.
-- Live sweep exists but currently uses `replicates=1`.
+- Live evidence is still single-model profile.
+- Replicate-5 live sweep exists, but wider confidence still requires longer run windows and more jobs per scenario.
 - No external backend comparison (Ray Serve, vLLM, SGLang) yet.
 
 ## 7. Next Immediate Actions
 
-- Re-run live sweep with higher replicate count (for example `replicates=5`) to add confidence intervals.
-- Add notebook section for class-level queue-wait distributions across sweep traces.
-- Promote this file to final note once multi-replicate live uncertainty bands are included.
+- Run the same replicate-5 sweep with at least one alternate local model to test ranking stability.
+- Increase run duration/arrival rate modestly to raise per-scenario sample size while preserving local feasibility.
+- Promote this file to final note after adding cross-model comparisons and updated uncertainty bands.

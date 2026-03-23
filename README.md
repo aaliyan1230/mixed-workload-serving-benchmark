@@ -52,6 +52,9 @@ uv run mws-bench run --config configs/live_ollama.json --output results/live_oll
 # Run against local Ollama and emit request-level trace
 uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json --trace-output results/live_ollama_trace.jsonl
 
+# Run replicate-5 local Ollama sweep with per-scenario traces
+uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/live_ollama_sweep_r5.csv --trace-output-dir results/traces/live_ollama_r5
+
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
 
