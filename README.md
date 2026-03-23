@@ -58,6 +58,9 @@ uv run mws-bench sweep --config configs/live_ollama_r5.json --output results/liv
 # Run against vLLM OpenAI-compatible endpoint
 uv run mws-bench run --config configs/live_vllm.json --output results/live_vllm_run.json --trace-output results/live_vllm_trace.jsonl
 
+# Run against SGLang OpenAI-compatible endpoint
+uv run mws-bench run --config configs/live_sglang.json --output results/live_sglang_run.json --trace-output results/live_sglang_trace.jsonl
+
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
 
@@ -165,6 +168,27 @@ Config fields:
 - `vllm.streaming_model` / `vllm.agentic_model`: model ids
 - `vllm.request_timeout_s`: per-request timeout ceiling
 - `vllm.*_prompt`, `vllm.*_max_tokens`: load-shape controls for each class
+
+### SGLang Mode (OpenAI-Compatible)
+
+- Start an SGLang OpenAI-compatible server (for example on `http://127.0.0.1:30000`).
+- Use `configs/live_sglang.json` and set model names that your server exposes.
+- Optional auth: set `SGLANG_API_KEY` (or your configured env var in `sglang.api_key_env`).
+
+Example:
+
+```bash
+uv run mws-bench run --config configs/live_sglang.json --output results/live_sglang_run.json --trace-output results/live_sglang_trace.jsonl
+```
+
+Config fields:
+
+- `execution.mode`: `live-sglang`
+- `sglang.base_url`: OpenAI-compatible base URL
+- `sglang.api_key_env`: env var name used for bearer token
+- `sglang.streaming_model` / `sglang.agentic_model`: model ids
+- `sglang.request_timeout_s`: per-request timeout ceiling
+- `sglang.*_prompt`, `sglang.*_max_tokens`: load-shape controls for each class
 
 Trace fields include per-request latency and backend metadata:
 

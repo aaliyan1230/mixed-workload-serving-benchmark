@@ -1,0 +1,55 @@
+{
+  "seed": 7,
+  "duration_s": 20,
+  "arrival_rate_rps": 1.2,
+  "mix": {
+    "streaming_ratio": 0.6,
+    "agentic_ratio": 0.4
+  },
+  "policy": {
+    "name": "fifo"
+  },
+  "workers": {
+    "streaming": 2,
+    "agentic": 1,
+    "shared": 1
+  },
+  "sla": {
+    "streaming_ms": 1200,
+    "agentic_ms": 6000
+  },
+  "cost": {
+    "streaming_unit": 0.001,
+    "agentic_unit": 0.005,
+    "timeout_penalty": 0.002
+  },
+  "streaming_profile": {
+    "service_ms_mean": 450,
+    "service_ms_std": 120,
+    "timeout_ms": 2500
+  },
+  "agentic_profile": {
+    "steps_mean": 4.0,
+    "steps_std": 1.2,
+    "step_ms_mean": 800,
+    "step_ms_std": 220,
+    "stall_probability": 0.08,
+    "stall_ms": 900,
+    "timeout_ms": 9000
+  },
+  "execution": {
+    "mode": "live-sglang"
+  },
+  "sglang": {
+    "base_url": "http://127.0.0.1:30000",
+    "api_key_env": "SGLANG_API_KEY",
+    "request_timeout_s": 45.0,
+    "streaming_model": "Qwen/Qwen2.5-3B-Instruct",
+    "agentic_model": "Qwen/Qwen2.5-3B-Instruct",
+    "streaming_prompt": "Answer in one short sentence: what is 2+2?",
+    "agentic_prompt": "List 5 concise bullet points on why latency benchmarking matters.",
+    "streaming_max_tokens": 64,
+    "agentic_max_tokens": 192
+  },
+  "replicates": 1
+}

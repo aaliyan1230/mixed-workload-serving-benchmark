@@ -5,9 +5,10 @@ import os
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
+from typing import Literal
 from urllib import error, request
 
-from .config import ExperimentConfig, VllmConfig
+from .config import ExperimentConfig, SglangConfig, VllmConfig
 from .simulator import JobResult
 from .workload import Job
 
@@ -19,6 +20,9 @@ class _Outcome:
     backend_status: str
     backend_error: str | None
     backend_model: str
+
+
+OpenAICompatibleConfig = VllmConfig | SglangConfig
 
 
 def _pick_job(policy_name: str, pending: list[Job]) -> Job:
@@ -38,7 +42,7 @@ def _pick_job(policy_name: str, pending: list[Job]) -> Job:
     return pending.pop(idx)
 
 
-def _build_request(cfg: VllmConfig, job: Job) -> tuple[str, bytes, dict[str, str], str]:
+def _build_request(cfg: OpenAICompatibleConfig, job: Job) -> tuple[str, bytes, dict[str, str], str]:
     if job.job_type == "streaming":
         model = cfg.streaming_model
         prompt = cfg.streaming_prompt
@@ -66,7 +70,7 @@ def _build_request(cfg: VllmConfig, job: Job) -> tuple[str, bytes, dict[str, str
     return url, json.dumps(payload).encode("utf-8"), headers, model
 
 
-def _run_one(run_cfg: VllmConfig, job: Job, start_s: float) -> _Outcome:
+def _run_one(run_cfg: OpenAICompatibleConfig, job: Job, start_s: float) -> _Outcome:
     deadline_s = min(run_cfg.request_timeout_s, job.timeout_ms / 1000.0)
     timed_out = False
     backend_status = "ok"
@@ -113,6 +117,18 @@ def _run_one(run_cfg: VllmConfig, job: Job, start_s: float) -> _Outcome:
 
 
 def run_live_vllm(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
+    return _run_live_openai_compatible(cfg, jobs, backend="vllm")
+
+
+def run_live_sglang(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
+    return _run_live_openai_compatible(cfg, jobs, backend="sglang")
+
+
+def _run_live_openai_compatible(
+    cfg: ExperimentConfig,
+    jobs: list[Job],
+    backend: Literal["vllm", "sglang"],
+) -> list[JobResult]:
     arrivals = sorted(jobs, key=lambda j: j.arrival_s)
     total_jobs = len(arrivals)
     next_arrival_idx = 0
@@ -136,7 +152,8 @@ def run_live_vllm(cfg: ExperimentConfig, jobs: list[Job]) -> list[JobResult]:
             while pending and len(active) < max_workers:
                 job = _pick_job(cfg.policy.name, pending)
                 start_s = time.monotonic() - start_clock
-                fut = pool.submit(_run_one, cfg.vllm, job, start_clock)
+                run_cfg = cfg.vllm if backend == "vllm" else cfg.sglang
+                fut = pool.submit(_run_one, run_cfg, job, start_clock)
                 active[fut] = (job, start_s)
 
             if active:

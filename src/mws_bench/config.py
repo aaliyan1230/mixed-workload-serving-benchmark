@@ -85,6 +85,19 @@ class VllmConfig:
 
 
 @dataclass(frozen=True)
+class SglangConfig:
+    base_url: str
+    api_key_env: str
+    request_timeout_s: float
+    streaming_model: str
+    agentic_model: str
+    streaming_prompt: str
+    agentic_prompt: str
+    streaming_max_tokens: int
+    agentic_max_tokens: int
+
+
+@dataclass(frozen=True)
 class ExperimentConfig:
     seed: int
     duration_s: float
@@ -99,6 +112,7 @@ class ExperimentConfig:
     execution: ExecutionConfig
     ollama: OllamaConfig
     vllm: VllmConfig
+    sglang: SglangConfig
     replicates: int
 
 
@@ -125,7 +139,7 @@ def _validate_capacity(cfg: ExperimentConfig) -> None:
 
 
 def _validate_execution(cfg: ExperimentConfig) -> None:
-    supported_modes = {"simulate", "live-ollama", "live-vllm"}
+    supported_modes = {"simulate", "live-ollama", "live-vllm", "live-sglang"}
     if cfg.execution.mode not in supported_modes:
         raise ValueError(
             f"execution mode must be one of {sorted(supported_modes)}, got {cfg.execution.mode}"
@@ -147,6 +161,14 @@ def _validate_execution(cfg: ExperimentConfig) -> None:
         if not cfg.vllm.streaming_model or not cfg.vllm.agentic_model:
             raise ValueError("vllm models are required for live-vllm mode")
 
+    if cfg.execution.mode == "live-sglang":
+        if cfg.sglang.request_timeout_s <= 0:
+            raise ValueError("sglang request_timeout_s must be positive")
+        if not cfg.sglang.base_url:
+            raise ValueError("sglang base_url is required for live-sglang mode")
+        if not cfg.sglang.streaming_model or not cfg.sglang.agentic_model:
+            raise ValueError("sglang models are required for live-sglang mode")
+
 
 def load_config(path: str | Path) -> ExperimentConfig:
     data = json.loads(Path(path).read_text())
@@ -154,6 +176,7 @@ def load_config(path: str | Path) -> ExperimentConfig:
     execution_data = data.get("execution", {"mode": "simulate"})
     ollama_data = data.get("ollama", {})
     vllm_data = data.get("vllm", {})
+    sglang_data = data.get("sglang", {})
 
     cfg = ExperimentConfig(
         seed=int(data["seed"]),
@@ -207,6 +230,31 @@ def load_config(path: str | Path) -> ExperimentConfig:
             ),
             streaming_max_tokens=int(vllm_data.get("streaming_max_tokens", 64)),
             agentic_max_tokens=int(vllm_data.get("agentic_max_tokens", 192)),
+        ),
+        sglang=SglangConfig(
+            base_url=str(sglang_data.get("base_url", "http://127.0.0.1:30000")),
+            api_key_env=str(sglang_data.get("api_key_env", "SGLANG_API_KEY")),
+            request_timeout_s=float(sglang_data.get("request_timeout_s", 45.0)),
+            streaming_model=str(
+                sglang_data.get("streaming_model", "Qwen/Qwen2.5-3B-Instruct")
+            ),
+            agentic_model=str(
+                sglang_data.get("agentic_model", "Qwen/Qwen2.5-3B-Instruct")
+            ),
+            streaming_prompt=str(
+                sglang_data.get(
+                    "streaming_prompt",
+                    "Answer in one short sentence: what is 2+2?",
+                )
+            ),
+            agentic_prompt=str(
+                sglang_data.get(
+                    "agentic_prompt",
+                    "List 5 concise bullet points on why latency benchmarking matters.",
+                )
+            ),
+            streaming_max_tokens=int(sglang_data.get("streaming_max_tokens", 64)),
+            agentic_max_tokens=int(sglang_data.get("agentic_max_tokens", 192)),
         ),
         replicates=int(data["replicates"]),
     )
