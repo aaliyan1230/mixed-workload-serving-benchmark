@@ -67,6 +67,23 @@ uv sync
 uv sync
 ```
 
+## Make Targets
+
+```bash
+# See available commands
+make help
+
+# One-time environment + kernel
+make setup
+make kernel
+
+# Full pipeline
+make all
+
+# Open notebook
+make notebook
+```
+
 ## Project Layout
 
 - `src/mws_bench/config.py`: typed experiment config and JSON loader
