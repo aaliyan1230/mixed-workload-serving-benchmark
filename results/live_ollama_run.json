@@ -58,18 +58,18 @@
       "total_jobs": 10,
       "success_jobs": 10,
       "timeout_jobs": 0,
-      "throughput_rps": 0.43056307574501707,
-      "p95_latency_ms": 12737.90168901898,
-      "p99_latency_ms": 12833.338747941127,
-      "sla_violation_rate": 0.4,
+      "throughput_rps": 0.46818345685990553,
+      "p95_latency_ms": 10993.588912199342,
+      "p99_latency_ms": 10995.318973047506,
+      "sla_violation_rate": 0.3,
       "cost_per_success": 0.0020000000000000005
     }
   ],
   "summary": {
-    "throughput_rps": 0.43056307574501707,
-    "p95_latency_ms": 12737.90168901898,
-    "p99_latency_ms": 12833.338747941127,
-    "sla_violation_rate": 0.4,
+    "throughput_rps": 0.46818345685990553,
+    "p95_latency_ms": 10993.588912199342,
+    "p99_latency_ms": 10995.318973047506,
+    "sla_violation_rate": 0.3,
     "cost_per_success": 0.0020000000000000005,
     "total_jobs": 10.0,
     "success_jobs": 10.0,
@@ -77,22 +77,22 @@
   },
   "summary_stats": {
     "throughput_rps": {
-      "mean": 0.43056307574501707,
+      "mean": 0.46818345685990553,
       "std": 0.0,
       "ci95": 0.0
     },
     "p95_latency_ms": {
-      "mean": 12737.90168901898,
+      "mean": 10993.588912199342,
       "std": 0.0,
       "ci95": 0.0
     },
     "p99_latency_ms": {
-      "mean": 12833.338747941127,
+      "mean": 10995.318973047506,
       "std": 0.0,
       "ci95": 0.0
     },
     "sla_violation_rate": {
-      "mean": 0.4,
+      "mean": 0.3,
       "std": 0.0,
       "ci95": 0.0
     },

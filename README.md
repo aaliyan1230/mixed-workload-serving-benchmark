@@ -31,8 +31,14 @@ uv run python -m ipykernel install --user --name mws-bench --display-name "Pytho
 # Run one config
 uv run mws-bench run --config configs/default.json --output results/default_run.json
 
+# Optional: write request-level trace JSONL for one run
+uv run mws-bench run --config configs/default.json --output results/default_run.json --trace-output results/default_trace.jsonl
+
 # Run matrix sweep (mix x policy)
 uv run mws-bench sweep --output results/sweep.csv
+
+# Optional: write per-scenario request-level trace JSONL files for sweep
+uv run mws-bench sweep --output results/sweep.csv --trace-output-dir results/traces/default
 
 # Run high-contention scenario
 uv run mws-bench sweep --config configs/high_contention.json --output results/high_contention_sweep.csv
@@ -42,6 +48,9 @@ uv run python scripts/plot_sweep.py --input results/sweep.csv --output-dir resul
 
 # Run against local Ollama (no API key)
 uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json
+
+# Run against local Ollama and emit request-level trace
+uv run mws-bench run --config configs/live_ollama.json --output results/live_ollama_run.json --trace-output results/live_ollama_trace.jsonl
 
 # Optional: plot high-contention sweep
 uv run python scripts/plot_sweep.py --input results/high_contention_sweep.csv --output-dir results/plots/high_contention
@@ -127,6 +136,13 @@ Config fields:
 - `ollama.streaming_model` / `ollama.agentic_model`: local model tags
 - `ollama.request_timeout_s`: per-request timeout ceiling
 - `ollama.*_prompt`, `ollama.*_num_predict`: load-shape controls for each class
+
+Trace fields include per-request latency and backend metadata:
+
+- `replicate`, `policy`, workload mix
+- `job_id`, `job_type`, `arrival_s`, `start_s`, `end_s`
+- `queue_wait_ms`, `service_ms`, `latency_ms`, `timed_out`
+- `backend_model`, `backend_status`, `backend_error`
 
 ## Notebook Workflow
 
