@@ -1,4 +1,4 @@
-.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace run-vllm run-sglang run-ray-serve sweep sweep-contention sweep-ollama-r5 sweep-vllm-r5 sweep-sglang-r5 sweep-ray-serve-r5 plots report test notebook all
+.PHONY: help setup kernel run run-trace run-ollama run-ollama-trace run-vllm run-sglang run-ray-serve probe-live mk-remote-vllm-r5 mk-remote-sglang-r5 mk-remote-ray-r5 sweep sweep-contention sweep-ollama-r5 sweep-vllm-r5 sweep-sglang-r5 sweep-ray-serve-r5 plots report test notebook all
 
 help:
 	@printf "Available targets:\n"
@@ -11,6 +11,10 @@ help:
 	@printf "  make run-vllm         # run vLLM OpenAI-compatible benchmark with trace\n"
 	@printf "  make run-sglang       # run SGLang OpenAI-compatible benchmark with trace\n"
 	@printf "  make run-ray-serve    # run Ray Serve OpenAI-compatible benchmark with trace\n"
+	@printf "  make probe-live       # probe live backend endpoints/routes\n"
+	@printf "  make mk-remote-vllm-r5 BASE_URL=...   # write remote vLLM r5 config\n"
+	@printf "  make mk-remote-sglang-r5 BASE_URL=... # write remote SGLang r5 config\n"
+	@printf "  make mk-remote-ray-r5 BASE_URL=...    # write remote Ray Serve r5 config\n"
 	@printf "  make sweep            # run baseline sweep\n"
 	@printf "  make sweep-contention # run high-contention sweep\n"
 	@printf "  make sweep-ollama-r5  # run replicate-5 local Ollama sweep with traces\n"
@@ -50,6 +54,18 @@ run-sglang:
 
 run-ray-serve:
 	uv run mws-bench run --config configs/live_ray_serve.json --output results/live_ray_serve_run.json --trace-output results/live_ray_serve_trace.jsonl
+
+probe-live:
+	uv run python scripts/probe_live_endpoints.py
+
+mk-remote-vllm-r5:
+	uv run python scripts/cloud/write_remote_config.py --backend vllm --base-url "$(BASE_URL)" --r5 --output configs/live_vllm_remote_r5.json
+
+mk-remote-sglang-r5:
+	uv run python scripts/cloud/write_remote_config.py --backend sglang --base-url "$(BASE_URL)" --r5 --output configs/live_sglang_remote_r5.json
+
+mk-remote-ray-r5:
+	uv run python scripts/cloud/write_remote_config.py --backend ray-serve --base-url "$(BASE_URL)" --r5 --output configs/live_ray_serve_remote_r5.json
 
 sweep:
 	uv run mws-bench sweep --config configs/default.json --output results/sweep.csv

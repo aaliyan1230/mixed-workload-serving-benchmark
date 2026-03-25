@@ -70,6 +70,12 @@ uv run mws-bench sweep --config configs/live_sglang_r5.json --output results/liv
 # Run against Ray Serve OpenAI-compatible endpoint
 uv run mws-bench run --config configs/live_ray_serve.json --output results/live_ray_serve_run.json --trace-output results/live_ray_serve_trace.jsonl
 
+# Probe configured live backend endpoints before running sweeps
+uv run python scripts/probe_live_endpoints.py
+
+# Generate a remote-endpoint replicate-5 config (example: vLLM)
+uv run python scripts/cloud/write_remote_config.py --backend vllm --base-url https://YOUR-ENDPOINT --r5 --output configs/live_vllm_remote_r5.json
+
 # Run replicate-5 Ray Serve sweep with per-scenario traces
 uv run mws-bench sweep --config configs/live_ray_serve_r5.json --output results/live_ray_serve_sweep_r5.csv --trace-output-dir results/traces/live_ray_serve_r5
 
@@ -230,8 +236,36 @@ Trace fields include per-request latency and backend metadata:
 - `queue_wait_ms`, `service_ms`, `latency_ms`, `timed_out`
 - `backend_model`, `backend_status`, `backend_error`
 
+### Live Mode Troubleshooting
+
+- Run endpoint probe before long sweeps:
+
+```bash
+make probe-live
+```
+
+- OpenAI-compatible live mode will automatically try common route variants:
+  - `/v1/chat/completions`
+  - `/chat/completions`
+  - `/v1/completions`
+  - `/completions`
+- `backend_status=http-error` with 404 means server reachable but route mismatch.
+- `backend_status=url-error` usually means connection refused or DNS/network issue.
+
+### Free GPU Cloud Option (Colab/Kaggle)
+
+- See [docs/free_gpu_colab_kaggle.md](docs/free_gpu_colab_kaggle.md) for a practical no-cost workflow.
+
 ## Notebook Workflow
 
-- Use `notebooks/analysis_entrypoint.ipynb` as the main analysis entrypoint.
-- The notebook loads `results/sweep.csv` and `results/high_contention_sweep.csv`, builds quick tables/plots, and provides markdown prompts for findings.
+- Serving notebooks (run on GPU machine):
+  - `notebooks/serve_vllm_colab.ipynb`
+  - `notebooks/serve_ray_serve_colab.ipynb`
+  - `notebooks/serve_sglang_colab.ipynb`
+- Analysis notebook (run after artifacts are exported/synced):
+  - `notebooks/analysis_entrypoint.ipynb`
+- Recommended flow:
+  1. Launch one backend from its serving notebook and expose endpoint URL.
+  2. From local repo, generate remote config and run `mws-bench run/sweep` to produce CSV + JSONL traces.
+  3. Sync artifacts to `results/` (or set `RESULTS_ROOT_OVERRIDE`) and run `notebooks/analysis_entrypoint.ipynb`.
 - Save finalized narrative in `docs/results.md` and/or `docs/technical_note_template.md`.
