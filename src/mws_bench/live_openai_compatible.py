@@ -25,6 +25,14 @@ class _Outcome:
 OpenAICompatibleConfig = VllmConfig | SglangConfig | RayServeConfig
 
 
+@dataclass(frozen=True)
+class _RequestAttempt:
+    url: str
+    payload: bytes
+    headers: dict[str, str]
+    model: str
+
+
 def _pick_job(policy_name: str, pending: list[Job]) -> Job:
     if policy_name == "fifo":
         idx = min(range(len(pending)), key=lambda i: pending[i].arrival_s)
@@ -42,7 +50,31 @@ def _pick_job(policy_name: str, pending: list[Job]) -> Job:
     return pending.pop(idx)
 
 
-def _build_request(cfg: OpenAICompatibleConfig, job: Job) -> tuple[str, bytes, dict[str, str], str]:
+def _candidate_urls(base_url: str) -> list[str]:
+    base = base_url.rstrip("/")
+    roots = [base]
+    if base.endswith("/v1"):
+        roots.append(base[: -len("/v1")])
+
+    paths = [
+        "/v1/chat/completions",
+        "/chat/completions",
+        "/v1/completions",
+        "/completions",
+    ]
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for root in roots:
+        for path in paths:
+            url = root + path
+            if url not in seen:
+                out.append(url)
+                seen.add(url)
+    return out
+
+
+def _build_requests(cfg: OpenAICompatibleConfig, job: Job) -> list[_RequestAttempt]:
     if job.job_type == "streaming":
         model = cfg.streaming_model
         prompt = cfg.streaming_prompt
@@ -52,11 +84,18 @@ def _build_request(cfg: OpenAICompatibleConfig, job: Job) -> tuple[str, bytes, d
         prompt = cfg.agentic_prompt
         max_tokens = cfg.agentic_max_tokens
 
-    payload = {
+    chat_payload = {
         "model": model,
         "messages": [
             {"role": "user", "content": prompt},
         ],
+        "temperature": 0.0,
+        "max_tokens": max_tokens,
+    }
+
+    completion_payload = {
+        "model": model,
+        "prompt": prompt,
         "temperature": 0.0,
         "max_tokens": max_tokens,
     }
@@ -66,8 +105,18 @@ def _build_request(cfg: OpenAICompatibleConfig, job: Job) -> tuple[str, bytes, d
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
-    url = cfg.base_url.rstrip("/") + "/v1/chat/completions"
-    return url, json.dumps(payload).encode("utf-8"), headers, model
+    attempts: list[_RequestAttempt] = []
+    for url in _candidate_urls(cfg.base_url):
+        payload = chat_payload if "chat/completions" in url else completion_payload
+        attempts.append(
+            _RequestAttempt(
+                url=url,
+                payload=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                model=model,
+            )
+        )
+    return attempts
 
 
 def _run_one(run_cfg: OpenAICompatibleConfig, job: Job, start_s: float) -> _Outcome:
@@ -76,35 +125,46 @@ def _run_one(run_cfg: OpenAICompatibleConfig, job: Job, start_s: float) -> _Outc
     backend_status = "ok"
     backend_error: str | None = None
 
-    url, payload, headers, model = _build_request(run_cfg, job)
+    attempts = _build_requests(run_cfg, job)
+    model = attempts[0].model if attempts else "unknown"
 
-    req = request.Request(
-        url=url,
-        data=payload,
-        headers=headers,
-        method="POST",
-    )
+    for idx, attempt in enumerate(attempts):
+        req = request.Request(
+            url=attempt.url,
+            data=attempt.payload,
+            headers=attempt.headers,
+            method="POST",
+        )
 
-    try:
-        with request.urlopen(req, timeout=deadline_s) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            if body.get("error"):
-                backend_status = "backend-error"
-                backend_error = str(body.get("error"))
-            else:
-                backend_status = "ok"
-    except TimeoutError as exc:
-        timed_out = True
-        backend_status = "timeout"
-        backend_error = str(exc)
-    except error.HTTPError as exc:
-        timed_out = True
-        backend_status = "http-error"
-        backend_error = str(exc)
-    except error.URLError as exc:
-        timed_out = True
-        backend_status = "url-error"
-        backend_error = str(exc)
+        try:
+            with request.urlopen(req, timeout=deadline_s) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+                if body.get("error"):
+                    timed_out = True
+                    backend_status = "backend-error"
+                    backend_error = f"{attempt.url}: {body.get('error')}"
+                else:
+                    backend_status = "ok"
+                    backend_error = None
+                break
+        except TimeoutError as exc:
+            timed_out = True
+            backend_status = "timeout"
+            backend_error = f"{attempt.url}: {exc}"
+            break
+        except error.HTTPError as exc:
+            # For route shape mismatch, try alternate OpenAI-compatible paths.
+            if exc.code == 404 and idx < len(attempts) - 1:
+                continue
+            timed_out = True
+            backend_status = "http-error"
+            backend_error = f"{attempt.url}: {exc}"
+            break
+        except error.URLError as exc:
+            timed_out = True
+            backend_status = "url-error"
+            backend_error = f"{attempt.url}: {exc}"
+            break
 
     ended = time.monotonic() - start_s
     return _Outcome(
